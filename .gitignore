@@ -1,0 +1,18 @@
+# Large data artifacts (do not commit)
+data.zip
+*.zip
+
+# Large IJF 3-gram datasets
+**/data/ijf/3-gram/*.txt
+data/ijf/3-gram/*.txt
+
+# Large IJF CSV (over 50 MB)
+data/ijf/blocking_sentence_bert/pro_supplier_with_clean_and_canonical_trimmed.csv
+**/pro_supplier_with_clean_and_canonical_trimmed.csv
+
+# Virtual env and cache
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
