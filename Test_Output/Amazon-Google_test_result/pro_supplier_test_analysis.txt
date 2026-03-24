@@ -1,0 +1,10 @@
+dataset: pro_supplier
+rows: 2293
+f1: 0.701754
+precision: 0.720721
+recall: 0.683761
+accuracy: 0.940689
+tp: 160
+fp: 62
+tn: 1997
+fn: 74
