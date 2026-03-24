@@ -1,0 +1,20 @@
+{
+  "epoch": 2,
+  "threshold": 0.5,
+  "val_f1": 0.9994863893168978,
+  "val_precision": 0.9989733059548255,
+  "val_recall": 1.0,
+  "val_accuracy": 0.9998,
+  "val_tp": 1946,
+  "val_fp": 2,
+  "val_tn": 8052,
+  "val_fn": 0,
+  "test_f1": 0.9992262058292494,
+  "test_precision": 0.999484004127967,
+  "test_recall": 0.998968540484786,
+  "test_accuracy": 0.9997,
+  "test_tp": 1937,
+  "test_fp": 1,
+  "test_tn": 8060,
+  "test_fn": 2
+}

@@ -37,6 +37,9 @@ class SbertBlockingConfig:
     target_total_pairs: Optional[int] = None  # e.g. 200_000
     batch_size_encode: int = 512
     block_rows: int = 800  # rows per block when running dense top‑K
+    # Batched anchor queries use (anchor_batch_size × n) similarity blocks; keep
+    # small on large corpora to avoid GPU OOM.
+    anchor_batch_size: int = 64
     use_gpu: bool = True
     seed: int = 42
 
@@ -165,6 +168,65 @@ def dense_topk_self_join(
     return pairs
 
 
+def dense_topk_for_anchors(
+    embeddings: np.ndarray,
+    anchor_indices: np.ndarray,
+    top_k: int,
+    anchor_batch_size: int = 64,
+    use_gpu: bool = True,
+) -> List[Tuple[int, int]]:
+    """
+    For each anchor row i, find top_k most similar j over the full corpus.
+
+    Uses batched matmul (B × n) per anchor batch instead of a full self-join that
+    treats every row as an anchor (n blocks of (block_rows × n)), which OOMs on
+    large n when only a subset of anchors is needed.
+    """
+    n, d = embeddings.shape
+    if n == 0 or len(anchor_indices) == 0:
+        return []
+
+    V = embeddings.astype("float32")
+    norms = np.linalg.norm(V, axis=1, keepdims=True) + 1e-8
+    V = V / norms
+
+    device = _get_device(prefer_gpu=use_gpu)
+    use_gpu = use_gpu and device == "cuda"
+    k_eff = min(top_k, n)
+
+    pairs: List[Tuple[int, int]] = []
+
+    if use_gpu:  # pragma: no cover
+        V_t = torch.from_numpy(V).to(device)
+        anchors = np.asarray(anchor_indices, dtype=np.int64)
+        for s in range(0, len(anchors), anchor_batch_size):
+            batch_idx = anchors[s : s + anchor_batch_size]
+            block = V_t[batch_idx]  # (B, d)
+            sims = torch.matmul(block, V_t.T)  # (B, n)
+            for r, ai in enumerate(batch_idx.tolist()):
+                sims[r, int(ai)] = -1e9
+            _, topk_j = torch.topk(sims, k=k_eff, dim=1)
+            bi = torch.from_numpy(batch_idx).to(device).unsqueeze(1).expand_as(topk_j)
+            bp = torch.stack([bi.reshape(-1), topk_j.reshape(-1)], dim=1)
+            pairs.extend([(int(i), int(j)) for i, j in bp.cpu().tolist()])
+        del V_t
+        torch.cuda.empty_cache()
+    else:
+        anchors = np.asarray(anchor_indices, dtype=np.int64)
+        for s in range(0, len(anchors), anchor_batch_size):
+            batch_idx = anchors[s : s + anchor_batch_size]
+            block = V[batch_idx]
+            sims = np.dot(block, V.T)
+            for r, ai in enumerate(batch_idx.tolist()):
+                sims[r, int(ai)] = -1e9
+            part = np.argpartition(-sims, k_eff - 1, axis=1)[:, :k_eff]
+            for r, ai in enumerate(batch_idx.tolist()):
+                for j in part[r]:
+                    pairs.append((int(ai), int(j)))
+
+    return pairs
+
+
 def sample_anchor_indices_for_target_pairs(
     n_records: int,
     top_k: int,
@@ -278,7 +340,7 @@ def build_blocking_datasets_from_csv(
     if config is None:
         config = SbertBlockingConfig()
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, low_memory=False)
     assert text_col in df.columns, f"text_col '{text_col}' not in {csv_path}"
     assert canonical_col in df.columns, f"canonical_col '{canonical_col}' not in {csv_path}"
 
@@ -305,17 +367,23 @@ def build_blocking_datasets_from_csv(
     )
     print(f"[sbert_blocking] Using {len(anchors):,} anchor records out of {len(texts):,}")
 
-    # Run dense top‑K only for the selected anchors.
-    all_pairs = dense_topk_self_join(
-        emb,
-        top_k=config.top_k,
-        block_rows=config.block_rows,
-        use_gpu=config.use_gpu,
-        seed=config.seed,
-    )
-    # Filter to anchor-based pairs.
-    anchor_set = set(int(a) for a in anchors)
-    filtered_pairs = [(i, j) for (i, j) in all_pairs if i in anchor_set]
+    n_records = len(texts)
+    if len(anchors) < n_records:
+        filtered_pairs = dense_topk_for_anchors(
+            emb,
+            anchors,
+            top_k=config.top_k,
+            anchor_batch_size=config.anchor_batch_size,
+            use_gpu=config.use_gpu,
+        )
+    else:
+        filtered_pairs = dense_topk_self_join(
+            emb,
+            top_k=config.top_k,
+            block_rows=config.block_rows,
+            use_gpu=config.use_gpu,
+            seed=config.seed,
+        )
 
     print(f"[sbert_blocking] Generated {len(filtered_pairs):,} raw candidate pairs")
 

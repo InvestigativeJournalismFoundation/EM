@@ -1,0 +1,9 @@
+dataset: pro_supplier
+rows: 5000
+matches: 10 (0.20%)
+non_matches: 4990 (99.80%)
+prob_mean: 0.002659
+prob_std: 0.038985
+prob_q25: 0.000022
+prob_q50: 0.000046
+prob_q75: 0.000212

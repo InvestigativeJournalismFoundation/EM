@@ -1,0 +1,22 @@
+strategy: sbert
+
+top_k_train: 10000
+top_k_predict: 1000
+target_total_pairs: 100000
+hybrid_mode: union
+seed: 42
+ 
+sbert:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  batch_size_encode: 512
+  block_rows: 800
+  anchor_batch_size: 64
+  use_gpu: true
+
+ann:
+  nlist: 4096
+  nprobe: 16
+
+ngram:
+  n: 3
+  type: char

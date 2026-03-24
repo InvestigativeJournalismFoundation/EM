@@ -1,0 +1,36 @@
+name: pro_supplier
+
+paths:
+  root: dataset/pro_supplier
+  raw_csv: dataset/pro_supplier/pro_supplier.csv
+  standardize_csv: dataset/pro_supplier/standardized_pro_supplier.csv
+  gold_csv: dataset/pro_supplier/gold_pro_supplier.csv
+  predict_csv: dataset/pro_supplier/predict_pro_supplier.csv
+
+output:
+  train_txt: data/pro_supplier/pro_supplier_train.txt
+  valid_txt: data/pro_supplier/pro_supplier_valid.txt
+  test_txt: data/pro_supplier/pro_supplier_test.txt
+  predict_txt: data/pro_supplier/pro_supplier_predict.txt
+
+  test_result_dir: Test_Output/pro_supplier_test_result
+  predict_result_dir: predict_output/pro_supplier_predict_result
+
+schema:
+  raw_id_col: id
+  standardize_id_col: id
+  canonical_col: canonical_int
+  join_key_raw: clean_supplier_name
+  join_key_standardize: clean_supplier_name
+  text_fields:
+    - clean_supplier_name
+    - address
+    - city
+    - prov
+    - postal
+    - country
+
+split:
+  train_ratio: 0.8
+  valid_ratio: 0.1
+  seed: 42

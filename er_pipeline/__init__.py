@@ -2,27 +2,22 @@
 er_pipeline
 ===========
 
-Utilities to build and evaluate Ditto-based ER pipelines in a more
-modular, scriptable way than a single notebook.
-
-Main submodules:
-    - sbert_blocking: sentence-BERT embedding + dense top‑K blocking.
-    - ann_blocking: FAISS-based approximate nearest neighbours blocking.
-    - training: thin wrappers to train and evaluate Ditto models on
-      standard Ditto text files (train/valid/test).
-    - analysis: utilities for exporting casebooks, counterfactuals,
-      and sanity checks from model outputs.
-
-These modules are designed so you can:
-    - Pass dataset paths and hyperparameters explicitly.
-    - Reuse the same code for different datasets (IJF, Itunes-Amazon, etc.).
-    - Call pipeline pieces from notebooks or standalone Python scripts.
+Utilities to build and evaluate Ditto-based ER pipelines in a modular way.
 """
 
 from . import sbert_blocking
 from . import ann_blocking
-from . import training
-from . import analysis
+
+# Optional modules: keep import failures non-fatal so blocking utilities remain usable
+# even when training/analysis deps are not installed.
+try:
+    from . import training
+except Exception:  # pragma: no cover
+    training = None  # type: ignore
+
+try:
+    from . import analysis
+except Exception:  # pragma: no cover
+    analysis = None  # type: ignore
 
 __all__ = ["sbert_blocking", "ann_blocking", "training", "analysis"]
-
