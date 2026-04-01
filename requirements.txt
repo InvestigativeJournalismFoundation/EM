@@ -1,0 +1,38 @@
+# Ditto config-driven ER pipeline + FAIR-DA4ER Ditto (ditto_light) training stack.
+# Install: pip install -r requirements.txt
+#
+# Optional: use a virtual environment first:
+#   python -m venv .venv && source .venv/bin/activate   # Linux/macOS
+#   pip install --upgrade pip
+
+# --- Pipeline & configs ---
+pandas
+numpy
+pyyaml
+scikit-learn
+scipy
+
+# --- PyTorch & Hugging Face (train / test / SBERT / ANN embeddings) ---
+torch
+transformers
+sentence-transformers
+tqdm
+
+# --- FAISS: required only for blocking strategy `ann` (configs/blocking.yaml) ---
+faiss-cpu
+
+# --- FAIR-DA4ER / Ditto original training stack (ditto_light, notebooks, etc.) ---
+gensim
+jsonlines
+nltk
+protobuf
+regex
+sentencepiece
+spacy
+tensorboardX
+timm
+wheel
+wordfreq
+
+# --- Optional: er_pipeline.analysis plots ---
+matplotlib

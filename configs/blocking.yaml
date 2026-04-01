@@ -1,3 +1,4 @@
+# strategy: sbert | ann | ngram | tfidf
 strategy: sbert
 
 top_k_train: 10000
@@ -20,3 +21,12 @@ ann:
 ngram:
   n: 3
   type: char
+
+# TF-IDF cosine blocking (no GPU; uses scikit-learn)
+tfidf:
+  max_features: 50000
+  min_df: 2
+  max_df: 0.95
+  sublinear_tf: true
+  anchor_batch_size: 32
+  block_rows: 32

@@ -20,7 +20,7 @@ def train(dataset: str) -> str:
         max_len=int(tcfg.get("max_len", 256)),
         batch_size_train=int(tcfg.get("batch_size_train", 32)),
         batch_size_eval=int(tcfg.get("batch_size_eval", 128)),
-        n_epochs=int(tcfg.get("n_epochs", 3)),
+        n_epochs=int(tcfg.get("n_epochs", 10)),
         lr=float(tcfg.get("lr", 2e-5)),
         weight_decay=float(tcfg.get("weight_decay", 0.0)),
         seed=int(tcfg.get("seed", 42)),
