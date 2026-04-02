@@ -8,13 +8,13 @@ paths:
   predict_csv: dataset/pro_supplier/predict_pro_supplier.csv
 
 output:
-  train_txt: data/pro_supplier/pro_supplier_train.txt
-  valid_txt: data/pro_supplier/pro_supplier_valid.txt
-  test_txt: data/pro_supplier/pro_supplier_test.txt
+  train_txt: /workspace/Ditto/data/er_magellan/Structured/Walmart-Amazon/train.txt
+  valid_txt: /workspace/Ditto/data/er_magellan/Structured/Walmart-Amazon/valid.txt
+  test_txt: /workspace/Ditto/data/er_magellan/Structured/Walmart-Amazon/test.txt
   predict_txt: data/pro_supplier/pro_supplier_predict.txt
 
-  test_result_dir: Test_Output/pro_supplier_test_result
-  predict_result_dir: predict_output/pro_supplier_predict_result
+  test_result_dir: Test_Output/Walmart-Amazon_test_result
+  predict_result_dir: predict_output/Walmart-Amazon_predict_result
 
 schema:
   raw_id_col: id

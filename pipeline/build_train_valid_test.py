@@ -25,6 +25,7 @@ from er_pipeline.sbert_blocking import (
     sample_anchor_indices_for_target_pairs,
 )
 from er_pipeline.ann_blocking import AnnBlockingConfig, build_ann_blocking_datasets_from_csv
+from er_pipeline.tfidf_blocking import TfidfBlockingConfig, build_tfidf_blocking_datasets_from_csv
 
 
 def _rename_split_files(tmp_dir: Path, out_train: Path, out_valid: Path, out_test: Path) -> None:
@@ -126,6 +127,23 @@ def build_splits(dataset: str) -> tuple[str, str, str]:
             seed=int(dcfg["split"]["seed"]),
         )
         write_ditto_files(labeled, texts, str(tmp_dir), tr, va, te)
+
+    elif strategy == "tfidf":
+        tfcfg = bcfg.get("tfidf", {})
+        cfg = TfidfBlockingConfig(
+            max_features=int(tfcfg.get("max_features", 50_000)),
+            min_df=int(tfcfg.get("min_df", 2)),
+            max_df=float(tfcfg.get("max_df", 0.95)),
+            sublinear_tf=bool(tfcfg.get("sublinear_tf", True)),
+            top_k=int(bcfg.get("top_k_train", 500)),
+            target_total_pairs=bcfg.get("target_total_pairs", None),
+            seed=int(bcfg.get("seed", 42)),
+            anchor_batch_size=int(tfcfg.get("anchor_batch_size", 32)),
+            block_rows=int(tfcfg.get("block_rows", 32)),
+        )
+        build_tfidf_blocking_datasets_from_csv(
+            gold_csv, "record_text", dcfg["schema"]["canonical_col"], str(tmp_dir), cfg
+        )
     else:
         raise ValueError(f"Unsupported blocking strategy: {strategy}")
 

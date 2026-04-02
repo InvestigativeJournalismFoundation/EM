@@ -15,6 +15,7 @@ import numpy as np
 from .config import load_dataset_config, load_blocking_config, to_abs
 from .record_format import build_record_text
 from er_pipeline.sbert_blocking import encode_texts
+from er_pipeline.tfidf_blocking import TfidfBlockingConfig, write_predict_pairs_tfidf
 
 
 def build_predict_pairs(dataset: str) -> str:
@@ -28,13 +29,10 @@ def build_predict_pairs(dataset: str) -> str:
 
     text_fields = dcfg["schema"].get("text_fields", [])
     k = int(bcfg.get("top_k_predict", 1000))
-    scfg = bcfg.get("sbert", {})
-    model_name = scfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2")
-    batch_size = int(scfg.get("batch_size_encode", 512))
-    use_gpu = bool(scfg.get("use_gpu", True))
+    strategy = bcfg.get("strategy", "sbert").lower()
 
-    gdf = pd.read_csv(gold_csv)
-    pdf = pd.read_csv(predict_csv)
+    gdf = pd.read_csv(gold_csv, low_memory=False)
+    pdf = pd.read_csv(predict_csv, low_memory=False)
 
     if "record_text" not in gdf.columns:
         gdf["record_text"] = gdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
@@ -42,6 +40,27 @@ def build_predict_pairs(dataset: str) -> str:
 
     gold_texts = gdf["record_text"].astype(str).tolist()
     pred_texts = pdf["record_text"].astype(str).tolist()
+
+    if strategy == "tfidf":
+        tfcfg = bcfg.get("tfidf", {})
+        cfg = TfidfBlockingConfig(
+            max_features=int(tfcfg.get("max_features", 50_000)),
+            min_df=int(tfcfg.get("min_df", 2)),
+            max_df=float(tfcfg.get("max_df", 0.95)),
+            sublinear_tf=bool(tfcfg.get("sublinear_tf", True)),
+            top_k=k,
+            anchor_batch_size=int(tfcfg.get("anchor_batch_size", 32)),
+            block_rows=int(tfcfg.get("block_rows", 32)),
+            seed=int(bcfg.get("seed", 42)),
+        )
+        write_predict_pairs_tfidf(gold_texts, pred_texts, str(out_txt), k, cfg)
+        print(f"[build_predict_pairs] Wrote {out_txt}")
+        return str(out_txt)
+
+    scfg = bcfg.get("sbert", {})
+    model_name = scfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2")
+    batch_size = int(scfg.get("batch_size_encode", 512))
+    use_gpu = bool(scfg.get("use_gpu", True))
 
     ge = encode_texts(gold_texts, model_name, batch_size=batch_size, device=("cuda" if use_gpu else "cpu"))
     pe = encode_texts(pred_texts, model_name, batch_size=batch_size, device=("cuda" if use_gpu else "cpu"))

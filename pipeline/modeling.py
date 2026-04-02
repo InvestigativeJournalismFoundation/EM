@@ -26,7 +26,7 @@ class TrainHyperParams:
     max_len: int = 256
     batch_size_train: int = 32
     batch_size_eval: int = 128
-    n_epochs: int = 3
+    n_epochs: int = 10
     lr: float = 2e-5
     weight_decay: float = 0.0
     seed: int = 42
