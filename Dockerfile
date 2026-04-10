@@ -18,6 +18,20 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     python -m spacy download en_core_web_sm
 
+# Pre-download HF models into the image so users don't need internet at runtime
+# These are baked into a dedicated layer (~340 MB) and cached by Docker
+ENV HF_HOME=/opt/hf_cache \
+    TRANSFORMERS_CACHE=/opt/hf_cache/transformers
+RUN python -c "\
+from transformers import AutoTokenizer, AutoModel; \
+AutoTokenizer.from_pretrained('distilbert-base-uncased'); \
+AutoModel.from_pretrained('distilbert-base-uncased'); \
+print('distilbert OK')" && \
+python -c "\
+from sentence_transformers import SentenceTransformer; \
+SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
+print('SBERT OK')"
+
 # Code layers — only files the pipeline actually imports
 COPY pipeline/ ./pipeline/
 COPY er_pipeline/ ./er_pipeline/
@@ -26,9 +40,11 @@ COPY ditto_light/ ./FAIR-DA4ER/ditto/ditto_light/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# All HF / torch caches land on a persistent volume, not inside the image
-ENV HF_HOME=/cache/.hf \
-    TRANSFORMERS_CACHE=/cache/.hf/transformers \
+# At runtime, model/data volumes are mounted; HF models come from the baked cache
+ENV HF_HOME=/opt/hf_cache \
+    TRANSFORMERS_CACHE=/opt/hf_cache/transformers \
+    TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_DISABLE_PROGRESS_BARS=1 \
     TORCH_HOME=/cache/.torch \
     GOLD_EMBED_CACHE=/cache/gold_embed/gold_embeddings.npy \
     PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
