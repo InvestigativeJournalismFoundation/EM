@@ -9,10 +9,10 @@ WORKDIR /app
 
 # Deps layer — cached unless requirements.txt changes
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128 && \
-    pip3 install --no-cache-dir -r requirements.txt && \
-    python3 -m spacy download en_core_web_sm
+RUN pip3 install --no-cache-dir --break-system-packages --upgrade pip && \
+    pip3 install --no-cache-dir --break-system-packages torch --index-url https://download.pytorch.org/whl/cu128 && \
+    pip3 install --no-cache-dir --break-system-packages -r requirements.txt && \
+    python3 -m spacy download --break-system-packages en_core_web_sm
 
 # Code layers — only files the pipeline actually imports
 COPY pipeline/ ./pipeline/
