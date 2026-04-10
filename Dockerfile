@@ -18,7 +18,7 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
 COPY pipeline/ ./pipeline/
 COPY er_pipeline/ ./er_pipeline/
 COPY configs/ ./configs/
-COPY FAIR-DA4ER/ditto/ditto_light/ ./FAIR-DA4ER/ditto/ditto_light/
+COPY ditto_light/ ./FAIR-DA4ER/ditto/ditto_light/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
