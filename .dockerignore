@@ -1,0 +1,37 @@
+# Git history — not needed in image
+.git
+.gitignore
+
+# Python bytecode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Large data files — mounted as volumes at runtime
+dataset/
+models/
+predict_output/
+Test_Output/
+data/
+
+# Notebooks — not needed in image
+*.ipynb
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# macOS artefacts
+.DS_Store
+
+# Only ditto_light is imported by modeling.py; exclude the rest of FAIR-DA4ER
+FAIR-DA4ER/ditto/blocking/
+FAIR-DA4ER/ditto/configs/
+FAIR-DA4ER/ditto/data/
+FAIR-DA4ER/ditto/scripts/
+FAIR-DA4ER/ditto/evaluation/
+FAIR-DA4ER/ditto/knowledge_infusion/
+FAIR-DA4ER/notebooks/
+FAIR-DA4ER/.git/

@@ -1,0 +1,42 @@
+services:
+  ditto:
+    image: ditto-er:latest
+    build: .
+    runtime: nvidia
+    environment:
+      - STAGE=predict
+      - DATASET=pro_supplier
+      - CUDA_VISIBLE_DEVICES=0
+      - GOLD_EMBED_CACHE=/cache/gold_embed/gold_embeddings.npy
+      - HF_HOME=/cache/.hf
+      - TRANSFORMERS_CACHE=/cache/.hf/transformers
+      - HF_HUB_ENABLE_HF_TRANSFER=0
+      # Uncomment after first run to prevent any network calls:
+      # - TRANSFORMERS_OFFLINE=1
+      # - HF_DATASETS_OFFLINE=1
+      # Paste your HuggingFace token here for higher rate limits (optional):
+      # - HF_TOKEN=
+    volumes:
+      # Config (editable without rebuilding)
+      - ./configs:/app/configs
+      # Data inputs
+      - ./dataset/pro_supplier:/app/dataset/pro_supplier
+      - ./models/pro_supplier:/app/models/pro_supplier
+      - ./data:/app/data
+      # Outputs
+      - ./predict_output:/app/predict_output
+      - ./Test_Output:/app/Test_Output
+      # Persistent caches (survive image rebuilds)
+      - hf_cache:/cache/.hf
+      - gold_embed:/cache/gold_embed
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  hf_cache:
+  gold_embed:

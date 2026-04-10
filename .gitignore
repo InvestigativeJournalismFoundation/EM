@@ -16,3 +16,15 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .cache/
+
+# Large model weights (store separately, not in git)
+models/
+*.pt
+*.bin
+*.safetensors
+
+# Large datasets and data outputs
+dataset/
+data/
+predict_output/
+Test_Output/
