@@ -1,0 +1,30 @@
+# Git history — not needed in image
+.git
+.gitignore
+
+# Python bytecode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Large data files — mounted as volumes at runtime
+dataset/
+models/
+predict_output/
+Test_Output/
+data/
+
+# Notebooks — not needed in image
+*.ipynb
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# macOS artefacts
+.DS_Store
+
+# FAIR-DA4ER is a nested git repo — excluded entirely; ditto_light is copied to /ditto_light/
+FAIR-DA4ER/

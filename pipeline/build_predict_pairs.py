@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -62,10 +63,24 @@ def build_predict_pairs(dataset: str) -> str:
     batch_size = int(scfg.get("batch_size_encode", 512))
     use_gpu = bool(scfg.get("use_gpu", True))
 
-    ge = encode_texts(gold_texts, model_name, batch_size=batch_size, device=("cuda" if use_gpu else "cpu"))
-    pe = encode_texts(pred_texts, model_name, batch_size=batch_size, device=("cuda" if use_gpu else "cpu"))
+    device = "cuda" if use_gpu else "cpu"
 
-    ge = ge / (np.linalg.norm(ge, axis=1, keepdims=True) + 1e-8)
+    # Gold embeddings cache: encoding 1.4M rows takes ~3 min; cache on a persistent volume
+    # so subsequent runs (new predict.csv, same gold table) skip re-encoding entirely.
+    gold_cache_path = os.environ.get("GOLD_EMBED_CACHE", "")
+    if gold_cache_path and os.path.exists(gold_cache_path):
+        print(f"[build_predict_pairs] Loading cached gold embeddings from {gold_cache_path}")
+        ge = np.load(gold_cache_path)
+    else:
+        print(f"[build_predict_pairs] Encoding {len(gold_texts)} gold records with SBERT ...")
+        ge = encode_texts(gold_texts, model_name, batch_size=batch_size, device=device)
+        ge = ge / (np.linalg.norm(ge, axis=1, keepdims=True) + 1e-8)
+        if gold_cache_path:
+            os.makedirs(os.path.dirname(gold_cache_path), exist_ok=True)
+            np.save(gold_cache_path, ge)
+            print(f"[build_predict_pairs] Saved gold embeddings to {gold_cache_path}")
+
+    pe = encode_texts(pred_texts, model_name, batch_size=batch_size, device=device)
     pe = pe / (np.linalg.norm(pe, axis=1, keepdims=True) + 1e-8)
 
     with out_txt.open("w", encoding="utf-8") as f:
