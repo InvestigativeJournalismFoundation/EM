@@ -36,7 +36,6 @@ FULL_RUN =  [
 INFERENCE_RUN = [
     "fetch_model",
     "fetch_data",
-    "build_gold",
     "build_predict",
     "predict",
 ]

@@ -44,6 +44,8 @@ def fetch_data(dataset: str, size=None) -> str:
     # Save the raw dataframe to a local csv file
     out_path_raw = Path(to_abs(paths_cfg["raw_csv"]))
     raw_df = pd.DataFrame(raw_rows, columns=[desc[0] for desc in cur.description])
+    # Mkdir if not exists
+    out_path_raw.parent.mkdir(parents=True, exist_ok=True)
     raw_df.to_csv(out_path_raw, index=False)
 
     std_rows = []
@@ -60,6 +62,7 @@ def fetch_data(dataset: str, size=None) -> str:
 
     # Save the standardized dataframe to a local csv file
     out_path_std = Path(to_abs(paths_cfg["standardize_csv"]))
+    out_path_std.parent.mkdir(parents=True, exist_ok=True)
     std_df.to_csv(out_path_std, index=False)
 
     cur.close()
