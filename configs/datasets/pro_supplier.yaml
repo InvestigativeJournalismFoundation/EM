@@ -6,6 +6,7 @@ paths:
   standardize_csv: dataset/pro_supplier/standardized_pro_supplier.csv
   gold_csv: dataset/pro_supplier/gold_pro_supplier.csv
   predict_csv: dataset/pro_supplier/predict_pro_supplier.csv
+  model: models/pro_supplier/best_model.pt
 
 output:
   train_txt: /workspace/Ditto/data/pro_supplier/pro_supplier_train.txt
@@ -29,6 +30,17 @@ schema:
     - prov
     - postal
     - country
+
+supabase:
+  raw_table: pro_supplier
+  standardize_table: pro_supplier_standardization
+
+s3:
+  prefix: pro_supplier/results
+
+model:
+  repo_id: himishra/ditto-er
+  filename: models/pro_supplier/best_model.pt
 
 split:
   train_ratio: 0.8

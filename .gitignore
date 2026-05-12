@@ -28,3 +28,6 @@ dataset/
 data/
 predict_output/
 Test_Output/
+
+#.env for HF token
+.env
