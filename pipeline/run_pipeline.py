@@ -33,11 +33,21 @@ FULL_RUN =  [
     "predict",
 ]
 
+INFERENCE_RUN = [
+    "fetch_model",
+    "fetch_data",
+    "build_gold",
+    "build_predict",
+    "predict",
+]
+
 
 def run(dataset: str, stage: str, size: int = None) -> None:
     load_dotenv()
     if stage == "all":
         seq = FULL_RUN
+    elif stage == "inference":
+        seq = INFERENCE_RUN
     else:
         if stage not in STAGES:
             raise ValueError(f"Unknown stage: {stage}")

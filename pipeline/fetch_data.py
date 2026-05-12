@@ -19,9 +19,9 @@ def fetch_data(dataset: str, size=None) -> str:
 
     # Connect to Supabase using creds from .env
     conn = pg.connect(
-        host=os.environ.get("SUPABASE_HOST"),
-        port=os.environ.get("SUPABASE_PORT"),
-        dbname=os.environ.get("SUPABASE_DB"),
+        host=os.environ.get("PG_HOST"),
+        port=os.environ.get("PG_PORT"),
+        dbname=os.environ.get("PG_DB"),
         user=os.environ.get("PG_USER"),
         password=os.environ.get("PG_PASSWORD"),
     )
@@ -29,7 +29,7 @@ def fetch_data(dataset: str, size=None) -> str:
     cur = conn.cursor()
     # Select all data from the raw table and load it into a pandas dataframe
     # Fetch data in batches
-    batch_size = 10000
+    batch_size = 100000
     offset = 0
     raw_rows = []
     while True:
