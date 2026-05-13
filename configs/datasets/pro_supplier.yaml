@@ -21,10 +21,10 @@ schema:
   raw_id_col: id
   standardize_id_col: id
   canonical_col: canonical_int
-  join_key_raw: clean_supplier_name
-  join_key_standardize: clean_supplier_name
+  join_key_raw: name
+  join_key_standardize: name
   text_fields:
-    - clean_supplier_name
+    - name
     - address
     - city
     - prov

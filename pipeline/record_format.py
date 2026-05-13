@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def normalize_text(v: Any) -> str:
-    if v is None:
+    if v is None or (isinstance(v, float) and pd.isna(v)):
         return ""
     s = str(v).strip()
     s = re.sub(r"\s+", " ", s)

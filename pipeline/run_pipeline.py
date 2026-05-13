@@ -41,7 +41,7 @@ INFERENCE_RUN = [
 ]
 
 
-def run(dataset: str, stage: str, size: int = None) -> None:
+def run(dataset: str, stage: str, size: int = None, batch_size: int = None) -> None:
     load_dotenv()
     if stage == "all":
         seq = FULL_RUN
@@ -67,7 +67,7 @@ def run(dataset: str, stage: str, size: int = None) -> None:
         elif s == "predict":
             run_predict(dataset)
         elif s == "fetch_data":
-            fetch_data(dataset, size=size)
+            fetch_data(dataset, size=size, batch_size=batch_size)
         elif s == "fetch_model":
             fetch_model(dataset)
         else:
@@ -79,8 +79,9 @@ def main() -> None:
     ap.add_argument("--dataset", required=True)
     ap.add_argument("--stage", default="all", help="all | fetch_data | fetch_model | build_gold | build_splits | build_predict | train | test | predict")
     ap.add_argument("--size", type=int, help="Number of rows to fetch")
+    ap.add_argument("--batch_size", type=int, help="Batch size for training and inference")
     args = ap.parse_args()
-    run(args.dataset, args.stage, size=args.size)
+    run(args.dataset, args.stage, size=args.size, batch_size=args.batch_size)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 from .config import load_dataset_config, to_abs
 
-def fetch_data(dataset: str, size=None) -> str:
+def fetch_data(dataset: str, size=None, batch_size=None) -> str:
     """Fetches data from Supabase and saves it to a local csv"""
     # Load config info from yaml in /config
     cfg = load_dataset_config(dataset)
@@ -18,18 +18,25 @@ def fetch_data(dataset: str, size=None) -> str:
     standardize_table = supabase_cfg["standardize_table"]
 
     # Connect to Supabase using creds from .env
+    print(f"[fetch_data] Connecting to {os.environ.get('PG_HOST')}...")
     conn = pg.connect(
         host=os.environ.get("PG_HOST"),
         port=os.environ.get("PG_PORT"),
         dbname=os.environ.get("PG_DB"),
         user=os.environ.get("PG_USER"),
         password=os.environ.get("PG_PASSWORD"),
+        connect_timeout=30,
     )
+    print(f"[fetch_data] Connected.")
 
     cur = conn.cursor()
     # Select all data from the raw table and load it into a pandas dataframe
     # Fetch data in batches
-    batch_size = 100000
+    if batch_size is None:
+        if size is not None:
+            batch_size = min(size, 100000)
+        else:
+            batch_size = 100000
     offset = 0
     raw_rows = []
     while True:

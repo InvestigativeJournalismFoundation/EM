@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
+from datetime import datetime, timezone
 from pathlib import Path
+import boto3
 import pandas as pd
 
 from .config import load_dataset_config, load_training_config, to_abs
@@ -29,7 +32,7 @@ def run_predict(dataset: str) -> str:
         batch_size=int(tcfg.get("batch_size_eval", 128)),
         threshold=float(tcfg.get("threshold", 0.5)),
     )
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows).drop(columns=["true_label"], errors="ignore")
 
     pred_csv = out_dir / f"{dataset}_predict.csv"
     df.to_csv(pred_csv, index=False)
@@ -53,6 +56,19 @@ def run_predict(dataset: str) -> str:
 
     print(f"[predict] Wrote {pred_csv}")
     print(f"[predict] Wrote {analysis}")
+
+    bucket = os.environ.get("S3_BUCKET")
+    if bucket:
+        s3 = boto3.client("s3")
+        prefix = dcfg.get("s3", {}).get("prefix", dataset)
+        run_ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        for local_path, s3_key in [
+            (pred_csv,  f"{prefix}/{run_ts}/{dataset}_predict.csv"),
+            (analysis,  f"{prefix}/{run_ts}/{dataset}_predict_analysis.txt"),
+        ]:
+            s3.upload_file(str(local_path), bucket, s3_key)
+            print(f"[predict] Uploaded s3://{bucket}/{s3_key}")
+
     return str(pred_csv)
 
 

@@ -14,7 +14,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Deps layer — cached unless requirements.txt changes
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128 && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu128 && \
     pip install --no-cache-dir -r requirements.txt && \
     python -m spacy download en_core_web_sm
 
@@ -43,10 +43,10 @@ RUN chmod +x /entrypoint.sh
 # At runtime, model/data volumes are mounted; HF models come from the baked cache
 ENV HF_HOME=/opt/hf_cache \
     TRANSFORMERS_CACHE=/opt/hf_cache/transformers \
-    TRANSFORMERS_OFFLINE=1 \
     HF_HUB_DISABLE_PROGRESS_BARS=1 \
     TORCH_HOME=/cache/.torch \
     GOLD_EMBED_CACHE=/cache/gold_embed/gold_embeddings.npy \
-    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+    PYTHONUNBUFFERED=1
 
 ENTRYPOINT ["/entrypoint.sh"]

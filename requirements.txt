@@ -11,9 +11,16 @@ numpy
 pyyaml
 scikit-learn
 scipy
+psycopg2-binary
+python-dotenv
+boto3
 
 # --- PyTorch & Hugging Face (train / test / SBERT / ANN embeddings) ---
+# In Docker, torch and torchvision are pre-installed from the PyTorch CUDA index
+# (see Dockerfile) so these are effectively no-ops there. For local CPU installs,
+# pip pulls them from PyPI.
 torch
+torchvision
 transformers
 sentence-transformers
 tqdm

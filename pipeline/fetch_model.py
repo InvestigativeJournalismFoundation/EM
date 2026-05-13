@@ -7,14 +7,19 @@ from .config import load_dataset_config, to_abs, REPO_ROOT
 def fetch_model(dataset: str) -> None:
     """Fetches model from Hugging Face and saves it to local directory"""
     # THIS WILL BE REPLACED BY S3 DOWNLOAD IN THE FUTURE!!!
-    # For now, we unset the env vars blocking Hugging Face Downloads
+    cfg = load_dataset_config(dataset)
+    model_cfg = cfg["model"]
+    filename = model_cfg["filename"]
+
+    out_path = Path(to_abs(filename))
+    if out_path.exists():
+        print(f"[fetch_model] Model already exists at {out_path}, skipping download.")
+        return
+
     os.environ.pop("TRANSFORMERS_OFFLINE", None)
     os.environ.pop("HF_HUB_OFFLINE", None)
 
-    cfg = load_dataset_config(dataset)
-    model_cfg = cfg["model"]
     repo_id = model_cfg["repo_id"]
-    filename = model_cfg["filename"]
 
     # local_dir must be a base directory. hf_hub_download mirrors the repo's
     # path structure under it, so filename="models/pro_supplier/best_model.pt"
@@ -25,4 +30,4 @@ def fetch_model(dataset: str) -> None:
         local_dir=str(REPO_ROOT),
         token=os.environ.get("HF_TOKEN"),
     )
-    print(f"Model downloaded to: {model_path}")
+    print(f"[fetch_model] Model downloaded to: {model_path}")
