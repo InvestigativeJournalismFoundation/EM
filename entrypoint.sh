@@ -19,4 +19,4 @@ if [ -n "$SIZE" ]; then
     EXTRA_ARGS="--size $SIZE"
 fi
 
-exec python3 -m pipeline.run_pipeline --dataset "$DATASET" --stage "$STAGE" $EXTRA_ARGS
+exec uv run python3 -m pipeline.run_pipeline --dataset "$DATASET" --stage "$STAGE" $EXTRA_ARGS
