@@ -31,7 +31,6 @@ FULL_RUN =  [
     "build_predict",
     "train",
     "test",
-    "predict",
 ]
 
 INFERENCE_RUN = [

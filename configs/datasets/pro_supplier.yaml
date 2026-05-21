@@ -16,10 +16,11 @@ output:
 
   test_result_dir: Test_Output/IJF_Docker_test_result
   predict_result_dir: predict_output/IJF_Docker_predict_result
+  cluster_result_dir: predict_output/IJF_Docker_cluster_result
 
 schema:
-  raw_id_col: id
-  standardize_id_col: id
+  raw_id_col: award_rid
+  standardize_id_col: award_rid
   canonical_col: canonical_int
   join_key_raw: name
   join_key_standardize: name

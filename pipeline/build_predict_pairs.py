@@ -48,8 +48,8 @@ def build_predict_pairs(dataset: str) -> str:
         gdf["record_text"] = gdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
     pdf["record_text"] = pdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
 
-    gold_texts = gdf["record_text"].astype(str).tolist()
-    pred_texts = pdf["record_text"].astype(str).tolist()
+    gold_texts = gdf["record_text"].astype(str).drop_duplicates().tolist()
+    pred_texts = pdf["record_text"].astype(str).drop_duplicates().tolist()
 
     if strategy == "tfidf":
         tfcfg = bcfg.get("tfidf", {})

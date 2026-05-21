@@ -9,6 +9,7 @@ import pandas as pd
 
 from .config import load_dataset_config, load_training_config, to_abs
 from .modeling import load_model_for_inference, predict_from_txt
+from .record_format import build_record_text
 
 
 def run_predict(dataset: str) -> str:
@@ -19,9 +20,17 @@ def run_predict(dataset: str) -> str:
     out_dir = Path(to_abs(dcfg["output"]["predict_result_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    ckpt = Path(to_abs(f"models/{dataset}/best_model.pt"))
+    ckpt = Path(to_abs(dcfg["model"]["filename"]))
     if not ckpt.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt}. Run training first.")
+
+    # Build text → (rid, name) lookup from raw CSV
+    schema = dcfg["schema"]
+    name_col = schema["text_fields"][0]
+    text_fields = schema.get("text_fields", [])
+    raw_df = pd.read_csv(to_abs(dcfg["paths"]["raw_csv"]), low_memory=False)
+    raw_df["_text"] = raw_df.apply(lambda r: build_record_text(r, text_fields), axis=1)
+    text_to_name = dict(zip(raw_df["_text"], raw_df[name_col]))
 
     model = load_model_for_inference(str(ckpt), lm=tcfg.get("lm", "distilbert"), device=tcfg.get("device", None))
     rows = predict_from_txt(
@@ -33,13 +42,19 @@ def run_predict(dataset: str) -> str:
         threshold=float(tcfg.get("threshold", 0.5)),
     )
     df = pd.DataFrame(rows).drop(columns=["true_label"], errors="ignore")
+    df = pd.DataFrame({
+        "name1": df["record1"].map(text_to_name),
+        "name2": df["record2"].map(text_to_name),
+        "score": df["prob_match"],
+        "pred":  df["pred_label"],
+    })
 
     pred_csv = out_dir / f"{dataset}_predict.csv"
     df.to_csv(pred_csv, index=False)
 
     n = len(df)
-    n_match = int((df["pred_label"] == 1).sum()) if n else 0
-    n_non = int((df["pred_label"] == 0).sum()) if n else 0
+    n_match = int((df["pred"] == 1).sum()) if n else 0
+    n_non = int((df["pred"] == 0).sum()) if n else 0
 
     analysis = out_dir / f"{dataset}_predict_analysis.txt"
     with analysis.open("w", encoding="utf-8") as f:
@@ -48,11 +63,11 @@ def run_predict(dataset: str) -> str:
         f.write(f"matches: {n_match} ({(n_match/n*100 if n else 0):.2f}%)\n")
         f.write(f"non_matches: {n_non} ({(n_non/n*100 if n else 0):.2f}%)\n")
         if n:
-            f.write(f"prob_mean: {df['prob_match'].mean():.6f}\n")
-            f.write(f"prob_std: {df['prob_match'].std():.6f}\n")
-            f.write(f"prob_q25: {df['prob_match'].quantile(0.25):.6f}\n")
-            f.write(f"prob_q50: {df['prob_match'].quantile(0.50):.6f}\n")
-            f.write(f"prob_q75: {df['prob_match'].quantile(0.75):.6f}\n")
+            f.write(f"score_mean: {df['score'].mean():.6f}\n")
+            f.write(f"score_std: {df['score'].std():.6f}\n")
+            f.write(f"score_q25: {df['score'].quantile(0.25):.6f}\n")
+            f.write(f"score_q50: {df['score'].quantile(0.50):.6f}\n")
+            f.write(f"score_q75: {df['score'].quantile(0.75):.6f}\n")
 
     print(f"[predict] Wrote {pred_csv}")
     print(f"[predict] Wrote {analysis}")

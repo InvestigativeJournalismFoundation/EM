@@ -44,3 +44,13 @@ torchvision = { index = "pytorch-cu128" }
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
+
+[tool.uv.workspace]
+members = [
+    "graph_resolution",
+]
+
+[dependency-groups]
+dev = [
+    "awscrt>=0.32.2",
+]
