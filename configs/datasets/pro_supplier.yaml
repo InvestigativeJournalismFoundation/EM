@@ -21,11 +21,11 @@ output:
 schema:
   raw_id_col: award_rid
   standardize_id_col: award_rid
-  canonical_col: canonical_int
+  canonical_col: canonical_id
   join_key_raw: name
   join_key_standardize: name
   text_fields:
-    - name
+    - cleaned
     - address
     - city
     - prov
@@ -33,7 +33,7 @@ schema:
     - country
 
 supabase:
-  raw_table: pro_supplier
+  raw_table: clean_pro_supplier
   standardize_table: pro_supplier_standardization
 
 s3:
