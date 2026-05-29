@@ -24,13 +24,28 @@ def run_predict(dataset: str) -> str:
     if not ckpt.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt}. Run training first.")
 
-    # Build text → (rid, name) lookup from raw CSV
+    # Build per-field text → value lookups from all source CSVs so every record
+    # text that can appear in the pairs (from raw, predict, or gold) is covered.
     schema = dcfg["schema"]
-    name_col = schema["text_fields"][0]
     text_fields = schema.get("text_fields", [])
-    raw_df = pd.read_csv(to_abs(dcfg["paths"]["raw_csv"]), low_memory=False)
-    raw_df["_text"] = raw_df.apply(lambda r: build_record_text(r, text_fields), axis=1)
-    text_to_name = dict(zip(raw_df["_text"], raw_df[name_col]))
+    name_col = text_fields[0] if text_fields else None
+    extra_cols = text_fields[1:] if len(text_fields) > 1 else []
+
+    field_lookups: dict[str, dict] = {f: {} for f in text_fields}
+    seen_paths: set = set()
+    for csv_key in ("raw_csv", "predict_csv", "gold_csv"):
+        csv_path = to_abs(dcfg["paths"].get(csv_key, ""))
+        if not csv_path or not Path(csv_path).exists():
+            continue
+        resolved = str(Path(csv_path).resolve())
+        if resolved in seen_paths:
+            continue
+        seen_paths.add(resolved)
+        df_src = pd.read_csv(csv_path, low_memory=False)
+        df_src["_text"] = df_src.apply(lambda r: build_record_text(r, text_fields), axis=1)
+        for field in text_fields:
+            if field in df_src.columns:
+                field_lookups[field].update(zip(df_src["_text"], df_src[field]))
 
     model = load_model_for_inference(str(ckpt), lm=tcfg.get("lm", "distilbert"), device=tcfg.get("device", None))
     rows = predict_from_txt(
@@ -42,12 +57,16 @@ def run_predict(dataset: str) -> str:
         threshold=float(tcfg.get("threshold", 0.5)),
     )
     df = pd.DataFrame(rows).drop(columns=["true_label"], errors="ignore")
-    df = pd.DataFrame({
-        "name1": df["record1"].map(text_to_name),
-        "name2": df["record2"].map(text_to_name),
-        "score": df["prob_match"],
-        "pred":  df["pred_label"],
-    })
+    out: dict = {}
+    if name_col:
+        out["name1"] = df["record1"].map(field_lookups[name_col])
+        out["name2"] = df["record2"].map(field_lookups[name_col])
+    for field in extra_cols:
+        out[f"{field}1"] = df["record1"].map(field_lookups[field])
+        out[f"{field}2"] = df["record2"].map(field_lookups[field])
+    out["score"] = df["prob_match"]
+    out["pred"] = df["pred_label"]
+    df = pd.DataFrame(out)
 
     pred_csv = out_dir / f"{dataset}_predict.csv"
     df.to_csv(pred_csv, index=False)

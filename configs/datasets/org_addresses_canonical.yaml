@@ -27,6 +27,7 @@ schema:
   text_fields:
     - cleaned
     - address
+  name: cleaned
 
 supabase:
   raw_table: org_addresses_canonical
