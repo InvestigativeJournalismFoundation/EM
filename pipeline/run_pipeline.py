@@ -11,6 +11,7 @@ from .test_and_analyze import run_test
 from .predict_and_analyze import run_predict
 from .fetch_data import fetch_data
 from .fetch_model import fetch_model
+from .build_graph import build_graph
 from dotenv import load_dotenv
 
 STAGES = [
@@ -22,9 +23,10 @@ STAGES = [
     "predict",
     "fetch_data",
     "fetch_model",
+    "build_graph",
 ]
 
-FULL_RUN =  [
+TRAIN =  [
     "fetch_data",
     "build_gold",
     "build_splits",
@@ -38,15 +40,29 @@ INFERENCE_RUN = [
     "fetch_data",
     "build_predict",
     "predict",
+    "build_graph",
+]
+
+FULL_RUN = [
+    "fetch_data",
+    "build_gold",
+    "build_splits",
+    "build_predict",
+    "train",
+    "test",
+    "predict",
+    "build_graph",
 ]
 
 
 def run(dataset: str, stage: str, size: int = None, batch_size: int = None) -> None:
     load_dotenv()
-    if stage == "all":
-        seq = FULL_RUN
+    if stage == "train":
+        seq = TRAIN
     elif stage == "inference":
         seq = INFERENCE_RUN
+    elif stage == "full":
+        seq = FULL_RUN
     else:
         if stage not in STAGES:
             raise ValueError(f"Unknown stage: {stage}")
@@ -74,6 +90,8 @@ def run(dataset: str, stage: str, size: int = None, batch_size: int = None) -> N
             fetch_data(dataset, size=size, batch_size=batch_size)
         elif s == "fetch_model":
             fetch_model(dataset)
+        elif s == "build_graph":
+            build_graph(dataset)
         else:
             raise ValueError(f"Unknown stage: {s}")
         elapsed = time.time() - stage_start
@@ -91,7 +109,7 @@ def run(dataset: str, stage: str, size: int = None, batch_size: int = None) -> N
 def main() -> None:
     ap = argparse.ArgumentParser(description="Run end-to-end Ditto pipeline by stage.")
     ap.add_argument("--dataset", required=True)
-    ap.add_argument("--stage", default="all", help="all | fetch_data | fetch_model | build_gold | build_splits | build_predict | train | test | predict")
+    ap.add_argument("--stage", default="all", help="fetch_data | fetch_model | build_gold | build_splits | build_predict | train | test | predict | full | inference | train")
     ap.add_argument("--size", type=int, help="Number of rows to fetch")
     ap.add_argument("--batch_size", type=int, help="Batch size for training and inference")
     # match mode controls whether we check matches in the dataset, or between the dataset and the full dataset, or both

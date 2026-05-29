@@ -9,6 +9,7 @@ dependencies = [
     "faiss-cpu>=1.13.2",
     "gensim>=4.4.0",
     "jsonlines>=4.0.0",
+    "leidenalg>=0.11.0",
     "matplotlib>=3.10.9",
     "nltk>=3.9.4",
     "numpy>=2.4.6",
@@ -53,4 +54,5 @@ members = [
 [dependency-groups]
 dev = [
     "awscrt>=0.32.2",
+    "ipykernel>=7.2.0",
 ]

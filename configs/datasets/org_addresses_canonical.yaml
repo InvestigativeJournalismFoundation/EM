@@ -15,8 +15,8 @@ output:
   predict_txt: ditto_data/org_pairs/org_pairs_predict.txt
 
   test_result_dir: Test_Output/IJF_Docker_test_result
-  predict_result_dir: predict_output/IJF_Docker_predict_result
-  cluster_result_dir: predict_output/IJF_Docker_cluster_result
+  predict_result_dir: predict_output/IJF_predict_result
+  cluster_result_dir: predict_output/IJF_cluster_result
 
 schema:
   raw_id_col: award_rid
@@ -38,7 +38,7 @@ s3:
 
 model:
   repo_id: himishra/ditto-er
-  filename: models/org_pairs_canonical/best_model.pt
+  filename: models/org_addresses_canonical/best_model.pt
 
 split:
   train_ratio: 0.8

@@ -31,3 +31,5 @@ Test_Output/
 
 #.env for HF token
 .env
+
+aws
