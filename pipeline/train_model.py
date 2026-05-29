@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+
+import boto3
 
 from .config import load_dataset_config, load_training_config, to_abs
 from .modeling import TrainHyperParams, train_save_and_eval
@@ -36,7 +39,16 @@ def train(dataset: str) -> str:
         hp,
         threshold=float(tcfg.get("threshold", 0.5)),
     )
-    return str(summary["checkpoint"])
+
+    ckpt = Path(summary["checkpoint"])
+    bucket = os.environ.get("S3_BUCKET")
+    if bucket:
+        prefix = dcfg.get("s3", {}).get("prefix", dataset)
+        s3_key = f"{prefix}/models/{dataset}/best_model.pt"
+        boto3.client("s3").upload_file(str(ckpt), bucket, s3_key)
+        print(f"[train] Uploaded model to s3://{bucket}/{s3_key}")
+
+    return str(ckpt)
 
 
 def main() -> None:
