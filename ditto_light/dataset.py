@@ -6,7 +6,8 @@ from transformers import AutoTokenizer
 from .augment import Augmenter
 
 # map lm name to huggingface's pre-trained model names
-lm_mp = {'roberta': 'roberta-base',
+lm_mp = {'bert': 'bert-base-uncased',
+         'roberta': 'roberta-base',
          'distilbert': 'distilbert-base-uncased'}
 
 def get_tokenizer(lm):

@@ -9,10 +9,10 @@ paths:
   model: models/pro_supplier/best_model.pt
 
 output:
-  train_txt: ditto_data/pro_supplier/pro_supplier_train.txt
-  valid_txt: ditto_data/pro_supplier/pro_supplier_valid.txt
-  test_txt: ditto_data/pro_supplier/pro_supplier_test.txt
-  predict_txt: ditto_data/pro_supplier/pro_supplier_predict.txt
+  train_txt: data/pro_supplier/pro_supplier_train.txt
+  valid_txt: data/pro_supplier/pro_supplier_valid.txt
+  test_txt: data/pro_supplier/pro_supplier_test.txt
+  predict_txt: data/pro_supplier/pro_supplier_predict.txt
 
   test_result_dir: Test_Output/IJF_Docker_test_result
   predict_result_dir: predict_output/IJF_Docker_predict_result

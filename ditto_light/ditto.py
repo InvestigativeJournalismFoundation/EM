@@ -17,7 +17,8 @@ from tensorboardX import SummaryWriter
 from torch import autocast, GradScaler
 
 
-lm_mp = {'roberta': 'roberta-base',
+lm_mp = {'bert': 'bert-base-uncased',
+         'roberta': 'roberta-base',
          'distilbert': 'distilbert-base-uncased'}
 
 class DittoModel(nn.Module):
