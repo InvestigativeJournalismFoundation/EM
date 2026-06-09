@@ -1,216 +1,156 @@
-# Ditto ER Pipeline (Config-Driven, No Notebook)
+# Entity Matching Pipeline
 
-This pipeline builds **gold tables**, creates **blocking-based candidate pairs**, generates
-`train/valid/test/predict` Ditto text files, trains a Ditto model, and writes test/predict reports.
-
----
-
-## 0) Setup: repository and dependencies
-
-### Get the code
-
-Clone or copy this **Ditto** project so your working tree includes at least:
-
-- `pipeline/` — CLI stages (`run_pipeline`, `build_gold`, …)
-- `er_pipeline/` — blocking helpers (SBERT, TF-IDF, ANN, n-gram)
-- `configs/` — dataset, blocking, and training YAML
-- `FAIR-DA4ER/` — upstream **FAIR-DA4ER** repo with `FAIR-DA4ER/ditto/ditto_light` (used for Ditto model + tokenizers)
-
-Example:
-
-```bash
-git clone <YOUR_REPOSITORY_URL> Ditto
-cd Ditto
-```
-
-If **FAIR-DA4ER** is not already inside `Ditto/`, add it (submodule, second clone, or vendor copy) so this path exists:
-
-`FAIR-DA4ER/ditto/ditto_light/`
-
-For example:
-
-```bash
-cd Ditto
-git clone https://github.com/MarcoNapoleone/FAIR-DA4ER.git FAIR-DA4ER
-```
-
-(Use the URL that matches how you maintain **FAIR-DA4ER** in your project.)
-
-### Python environment
-
-Use **Python 3.10+** (3.12 is fine). A virtual environment is recommended:
-
-```bash
-cd Ditto
-python -m venv .venv
-source .venv/bin/activate          # Linux / macOS
-# .venv\Scripts\activate           # Windows
-pip install --upgrade pip
-```
-
-### Install dependencies
-
-From the **Ditto** root (the directory that contains `requirements.txt`):
-
-```bash
-pip install -r requirements.txt
-```
-
-This file bundles:
-
-- **Pipeline**: `pandas`, `numpy`, `pyyaml`, `scikit-learn`, `scipy`
-- **Training / SBERT / transformers**: `torch`, `transformers`, `sentence-transformers`, `tqdm`
-- **ANN blocking** (`strategy: ann`): `faiss-cpu` (use `faiss-gpu` instead if you rely on GPU FAISS and know your CUDA stack)
-- **FAIR-DA4ER / Ditto stack** (aligned with `FAIR-DA4ER/requirements.txt`): `gensim`, `spacy`, `nltk`, etc.
-- **Optional analysis plots**: `matplotlib`
-
-If you only need a minimal subset (e.g. TF-IDF + n-gram blocking and no `spacy`), you can install packages selectively; the full file matches what this repo is built and tested with.
-
-### Optional: Hugging Face Hub
-
-For higher rate limits when downloading models, set:
-
-```bash
-export HF_TOKEN=<your_token>
-```
-
-### Optional: spaCy English model
-
-Some FAIR-DA4ER / Ditto paths expect spaCy; if you hit import or model errors:
-
-```bash
-python -m spacy download en_core_web_sm
-```
-
-### Where to run commands
-
-All pipeline examples below assume the **current working directory** is the **Ditto** root (where `pipeline/` and `configs/` live).
+A config-driven entity resolution pipeline using [Ditto](https://github.com/megagonlabs/ditto) (DistilBERT-based) to detect when multiple supplier records in procurement data refer to the same real-world organisation. Supports full training runs and inference-only runs, with GPU acceleration via Docker and AWS Batch.
 
 ---
 
-## 1) Directory Contract
+## How it works
 
-For each dataset, use:
+Entity matching is a two-step process:
 
-```
-dataset/
-  <dataset>/
-    <dataset>.csv
-    standardized_<dataset>.csv
-    gold_<dataset>.csv           # generated or reused
-    predict_<dataset>.csv        # input for prediction pairing
-```
-
-Pipeline outputs:
-
-```
-data/
-  <dataset>/
-    <dataset>_train.txt
-    <dataset>_valid.txt
-    <dataset>_test.txt
-    <dataset>_predict.txt
-
-models/
-  <dataset>/
-    best_model.pt
-    train_metrics.json
-
-Test_Output/
-  <dataset>_test_result/
-    <dataset>_test.csv
-    <dataset>_test_analysis.txt
-
-predict_output/
-  <dataset>_predict_result/
-    <dataset>_predict.csv
-    <dataset>_predict_analysis.txt
-```
+1. **Blocking** — for each record, find the top-k most similar candidates using SBERT embeddings or TF-IDF. This reduces the number of pairs that need to be classified from O(N²) to O(N·k).
+2. **Classification** — each candidate pair is passed to a fine-tuned DistilBERT model (Ditto) which predicts whether the two records refer to the same entity.
 
 ---
 
-## 2) Config Files
+## Pipeline stages
 
-- Dataset config: `configs/datasets/<dataset>.yaml`
-- Blocking config: `configs/blocking.yaml`
-- Training config: `configs/training.yaml`
+Stages are run via:
+```bash
+python -m pipeline.run_pipeline --dataset <dataset> --stage <stage>
+```
 
-Default example included:
-- `configs/datasets/pro_supplier.yaml`
+| Stage | Description |
+|---|---|
+| `fetch_data` | Downloads raw and standardized tables from Supabase as CSV files |
+| `fetch_model` | Downloads the trained Ditto model from HuggingFace Hub |
+| `build_gold` | Joins raw + standardized tables to create a labeled reference set |
+| `build_splits` | Generates candidate pairs via blocking and splits them into train/valid/test files in Ditto format |
+| `train` | Fine-tunes DistilBERT on the training pairs |
+| `test` | Evaluates the model on the test set and writes metrics |
+| `predict` | Runs inference on new data and writes predictions + statistics |
+
+Two preset sequences are available:
+
+- `--stage all` — full training run: `fetch_data → build_gold → build_splits → train → test → predict`
+- `--stage inference` — inference only: `fetch_model → fetch_data → build_predict → predict`
+
+The `--size <n>` flag limits the number of rows fetched from Supabase, useful for testing.
 
 ---
 
-## 3) Run Commands
+## Configuration
 
-From repository root (`/workspace/Ditto`):
+All behaviour is controlled by YAML files in `configs/`.
 
-### Full end-to-end run
+### `configs/datasets/<dataset>.yaml`
+Defines paths, schema, Supabase table names, S3 prefix, and model location for a dataset. See `configs/datasets/pro_supplier.yaml` for a reference example.
+
+Key fields:
+```yaml
+schema:
+  raw_id_col: award_rid          # Primary key column
+  text_fields: [name, address, city, prov, postal, country]  # Fields used for matching
+  canonical_col: canonical_int   # Ground truth cluster ID (training only)
+
+supabase:
+  raw_table: pro_supplier
+  standardize_table: pro_supplier_standardization
+
+model:
+  repo_id: himishra/ditto-er     # HuggingFace model repo
+  filename: models/pro_supplier/best_model.pt
+
+s3:
+  prefix: pro_supplier/results   # S3 key prefix for output files
+```
+
+### `configs/blocking.yaml`
+Controls the blocking strategy and candidate generation:
+```yaml
+strategy: sbert       # sbert | tfidf | ann
+top_k_predict: 1000   # Candidates per record during inference
+```
+
+### `configs/training.yaml`
+Model hyperparameters: learning rate, batch size, epochs, sequence length, decision threshold.
+
+---
+
+## Setup
+
+### Local
 
 ```bash
-python -m pipeline.run_pipeline --dataset pro_supplier --stage all
+uv sync
+uv run python -m spacy download en_core_web_sm
+cp .env.example .env  # fill in credentials
 ```
 
-### Stage-by-stage
+Dependencies are managed via `pyproject.toml`. `torch` and `torchvision` are always pulled from the PyTorch CUDA 12.8 index.
+
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `PG_HOST` | Supabase PostgreSQL host |
+| `PG_PORT` | PostgreSQL port |
+| `PG_DB` | Database name |
+| `PG_USER` | Database user |
+| `PG_PASSWORD` | Database password |
+| `HF_TOKEN` | HuggingFace token (optional, for higher rate limits) |
+| `S3_BUCKET` | S3 bucket name for uploading results (optional) |
+| `GOLD_EMBED_CACHE` | Path to cache gold SBERT embeddings across runs (optional) |
+
+---
+
+## Docker
+
+The image is built on `nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04` and pre-bakes DistilBERT and Sentence-BERT weights to avoid downloading them at runtime.
 
 ```bash
-python -m pipeline.run_pipeline --dataset pro_supplier --stage build_gold
-python -m pipeline.run_pipeline --dataset pro_supplier --stage build_splits
-python -m pipeline.run_pipeline --dataset pro_supplier --stage build_predict
-python -m pipeline.run_pipeline --dataset pro_supplier --stage train
-python -m pipeline.run_pipeline --dataset pro_supplier --stage test
-python -m pipeline.run_pipeline --dataset pro_supplier --stage predict
+# Build
+docker build -t ditto-er .
+
+# Run inference locally
+docker run --rm --gpus all --env-file .env \
+  -e STAGE=inference -e DATASET=pro_supplier \
+  -v $(pwd)/dataset/pro_supplier:/app/dataset/pro_supplier \
+  -v $(pwd)/models/pro_supplier:/app/models/pro_supplier \
+  -v $(pwd)/predict_output:/app/predict_output \
+  ditto-er:latest
 ```
 
-You can also call individual modules directly:
+Pass `-e SIZE=<n>` to limit rows for a quick test run.
 
-```bash
-python -m pipeline.build_gold --dataset pro_supplier
-python -m pipeline.build_train_valid_test --dataset pro_supplier
-python -m pipeline.build_predict_pairs --dataset pro_supplier
-python -m pipeline.train_model --dataset pro_supplier
-python -m pipeline.test_and_analyze --dataset pro_supplier
-python -m pipeline.predict_and_analyze --dataset pro_supplier
-```
+The base image (all dependencies) and code image (pipeline code only) are kept in separate Dockerfiles to keep iterative pushes fast — only changed code layers are uploaded.
 
 ---
 
-## 4) Blocking Strategy Parameters
+## AWS Batch deployment
 
-In `configs/blocking.yaml`:
+The pipeline is designed to run as a daily scheduled AWS Batch job on a `g4dn.4xlarge` instance (1 NVIDIA T4 GPU). The compute environment scales to zero between runs.
 
-- `strategy`: `sbert` | `ann` | `ngram` | `tfidf`
-- `top_k_train`: top-k candidates per anchor for train split generation
-- `target_total_pairs`: approximate total pair count goal
-- `top_k_predict`: top-k gold candidates for each predict record (default `1000`)
-
-For `sbert` strategy:
-- `model_name`, `batch_size_encode`, `block_rows`, `use_gpu`
-
-For `ann` strategy:
-- `nlist`, `nprobe`
-
-For `ngram` strategy:
-- `n` (character n-gram size)
-
-For `tfidf` strategy:
-- `max_features`, `min_df`, `max_df`, `sublinear_tf` (vectorizer)
-- `anchor_batch_size`, `block_rows` (memory vs speed for similarity blocks; CPU-only)
+- The Docker image is stored in **ECR**
+- Database credentials are stored in **AWS Secrets Manager** and injected as environment variables at runtime
+- Prediction results are uploaded to **S3** when `S3_BUCKET` is set
+- The daily schedule is managed by **EventBridge Scheduler**
 
 ---
 
-## 5) Notes
+## Output
 
-- `build_gold` will use existing `canonical_int` if already present in raw CSV,
-  otherwise it joins standardized table to raw table using configured join keys.
-- Ditto text rows are generated in standard format:
-  `record_left<TAB>record_right<TAB>label`
-- Predict file uses dummy label (`0`) and model inference generates actual predictions.
+The `predict` stage writes two files to `predict_result_dir` (and optionally to S3 under `s3://<S3_BUCKET>/<prefix>/<timestamp>/`):
+
+- `<dataset>_predict.csv` — one row per candidate pair with `record1`, `record2`, `pred_label`, `prob_match`
+- `<dataset>_predict_analysis.txt` — aggregate statistics (match rate, probability distribution)
 
 ---
 
-## 6) Quick Troubleshooting
+## Blocking strategies
 
-- If training fails to import Ditto classes, verify this path exists:
-  `FAIR-DA4ER/ditto/ditto_light`
-- If no pairs are generated, reduce blocking strictness or increase `top_k_train`.
-- If prediction output is too large, reduce `top_k_predict`.
+| Strategy | When to use |
+|---|---|
+| `sbert` | Default. Best quality; uses Sentence-BERT embeddings |
+| `tfidf` | No GPU required; good for keyword-heavy fields |
+| `ann` | Large datasets (1M+ records); approximate but fast via FAISS |

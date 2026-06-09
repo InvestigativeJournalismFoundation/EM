@@ -23,24 +23,39 @@ def build_predict_pairs(dataset: str) -> str:
     dcfg = load_dataset_config(dataset)
     bcfg = load_blocking_config()
 
+    raw_csv = Path(to_abs(dcfg["paths"]["raw_csv"]))
     gold_csv = Path(to_abs(dcfg["paths"]["gold_csv"]))
+    if not gold_csv.exists():
+        print(f"[build_predict_pairs] gold_csv not found; falling back to raw_csv: {raw_csv}")
+        gold_csv = raw_csv
     predict_csv = Path(to_abs(dcfg["paths"]["predict_csv"]))
+    if not predict_csv.exists():
+        print(f"[build_predict_pairs] predict_csv not found; falling back to raw_csv: {raw_csv}")
+        predict_csv = raw_csv
+    # same_source saves whether both csvs are the same, and is used to avoid self-pairs and symetric pairs
+    same_source = gold_csv.resolve() == predict_csv.resolve()
     out_txt = Path(to_abs(dcfg["output"]["predict_txt"]))
     out_txt.parent.mkdir(parents=True, exist_ok=True)
 
     text_fields = dcfg["schema"].get("text_fields", [])
-    k = int(bcfg.get("top_k_predict", 1000))
+    k = int(bcfg.get("top_k_predict", 20))
     strategy = bcfg.get("strategy", "sbert").lower()
 
     gdf = pd.read_csv(gold_csv, low_memory=False)
     pdf = pd.read_csv(predict_csv, low_memory=False)
 
-    if "record_text" not in gdf.columns:
-        gdf["record_text"] = gdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
+    name_col = text_fields[0] if text_fields else None
+    if name_col:
+        before_g, before_p = len(gdf), len(pdf)
+        gdf = gdf[gdf[name_col].notna() & (gdf[name_col].astype(str).str.strip() != "")]
+        pdf = pdf[pdf[name_col].notna() & (pdf[name_col].astype(str).str.strip() != "")]
+        print(f"[build_predict_pairs] Dropped {before_g - len(gdf)} gold rows and {before_p - len(pdf)} predict rows with missing '{name_col}'")
+
+    gdf["record_text"] = gdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
     pdf["record_text"] = pdf.apply(lambda r: build_record_text(r, text_fields), axis=1)
 
-    gold_texts = gdf["record_text"].astype(str).tolist()
-    pred_texts = pdf["record_text"].astype(str).tolist()
+    gold_texts = gdf["record_text"].astype(str).drop_duplicates().tolist()
+    pred_texts = pdf["record_text"].astype(str).drop_duplicates().tolist()
 
     if strategy == "tfidf":
         tfcfg = bcfg.get("tfidf", {})
@@ -54,7 +69,7 @@ def build_predict_pairs(dataset: str) -> str:
             block_rows=int(tfcfg.get("block_rows", 32)),
             seed=int(bcfg.get("seed", 42)),
         )
-        write_predict_pairs_tfidf(gold_texts, pred_texts, str(out_txt), k, cfg)
+        write_predict_pairs_tfidf(gold_texts, pred_texts, str(out_txt), k, cfg, skip_self=same_source)
         print(f"[build_predict_pairs] Wrote {out_txt}")
         return str(out_txt)
 
@@ -89,6 +104,10 @@ def build_predict_pairs(dataset: str) -> str:
             idx = np.argpartition(-sims, min(k, len(sims)-1))[:k]
             idx = idx[np.argsort(-sims[idx])]
             for j in idx:
+                # This line excludes self-pairs!
+                # also the != makes it so we don't include both (i,j) and (j,i)
+                if same_source and int(j) == int(i):
+                    continue
                 f.write(f"{pred_texts[i]}\t{gold_texts[int(j)]}\t0\n")
 
     print(f"[build_predict_pairs] Wrote {out_txt}")

@@ -1,0 +1,46 @@
+name: org_pairs_canonical
+
+paths:
+  root: dataset/org_pairs
+  raw_csv: dataset/org_pairs/org_pairs.csv
+  standardize_csv: dataset/org_pairs/standardized_org_pairs.csv
+  gold_csv: dataset/org_pairs/gold_org_pairs.csv
+  predict_csv: dataset/org_pairs/predict_org_pairs.csv
+  model: models/org_pairs/best_model.pt
+
+output:
+  train_txt: ditto_data/org_pairs/org_pairs_train.txt
+  valid_txt: ditto_data/org_pairs/org_pairs_valid.txt
+  test_txt: ditto_data/org_pairs/org_pairs_test.txt
+  predict_txt: ditto_data/org_pairs/org_pairs_predict.txt
+
+  test_result_dir: Test_Output/IJF_Docker_test_result
+  predict_result_dir: predict_output/IJF_predict_result
+  cluster_result_dir: predict_output/IJF_cluster_result
+
+schema:
+  raw_id_col: award_rid
+  standardize_id_col: award_rid
+  canonical_col: canonical
+  join_key_raw: cleaned
+  join_key_standardize: name
+  text_fields:
+    - cleaned
+    - address
+  name: cleaned
+
+supabase:
+  raw_table: org_addresses_canonical
+  standardize_table: pro_supplier_standardization
+
+s3:
+  prefix: org_pairs/results
+
+model:
+  repo_id: himishra/ditto-er
+  filename: models/org_addresses_canonical/best_model.pt
+
+split:
+  train_ratio: 0.8
+  valid_ratio: 0.1
+  seed: 42

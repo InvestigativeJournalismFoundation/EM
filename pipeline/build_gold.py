@@ -20,11 +20,18 @@ def create_gold(dataset: str) -> str:
 
     raw = pd.read_csv(raw_path)
     canonical_col = schema["canonical_col"]
+    print(f"[build_gold] raw columns: {list(raw.columns)}, rows: {len(raw)}")
 
     if canonical_col in raw.columns and raw[canonical_col].notna().any():
+        print(f"[build_gold] Using fast path: '{canonical_col}' found in raw ({raw[canonical_col].notna().sum()} non-null)")
         gold = raw.copy()
     else:
+        if canonical_col not in raw.columns:
+            print(f"[build_gold] '{canonical_col}' not in raw columns, joining with standardize CSV")
+        else:
+            print(f"[build_gold] '{canonical_col}' in raw but all null, joining with standardize CSV")
         std = pd.read_csv(std_path)
+        print(f"[build_gold] standardize columns: {list(std.columns)}, rows: {len(std)}")
         rk = schema["join_key_raw"]
         sk = schema["join_key_standardize"]
         if rk not in raw.columns:
@@ -39,6 +46,7 @@ def create_gold(dataset: str) -> str:
 
         std_key = std[["_join_key", canonical_col]].dropna().drop_duplicates(subset=["_join_key"])
         gold = raw.merge(std_key, on="_join_key", how="left")
+        print(f"[build_gold] After join: {gold[canonical_col].notna().sum()} rows matched out of {len(raw)}")
 
     text_fields = schema.get("text_fields", [])
     for f in text_fields:

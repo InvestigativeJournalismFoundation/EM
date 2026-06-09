@@ -4,7 +4,7 @@ services:
     build: .
     runtime: nvidia
     environment:
-      - STAGE=predict
+      - STAGE=inference
       - DATASET=pro_supplier
       - CUDA_VISIBLE_DEVICES=0
       - GOLD_EMBED_CACHE=/cache/gold_embed/gold_embeddings.npy
@@ -22,8 +22,8 @@ services:
       # Data inputs
       - ./dataset/pro_supplier:/app/dataset/pro_supplier
       - ./models/pro_supplier:/app/models/pro_supplier
-      - ./data:/app/data
       # Outputs
+      - ./ditto_data:/app/ditto_data
       - ./predict_output:/app/predict_output
       - ./Test_Output:/app/Test_Output
       # Persistent caches (survive image rebuilds)

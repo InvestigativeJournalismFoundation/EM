@@ -179,7 +179,7 @@ def train_save_and_eval(
 def load_model_for_inference(checkpoint_path: str, lm: str, device: Optional[str] = None) -> DittoModel:
     dev = _device(device)
     model = DittoModel(device=dev, lm=lm)
-    state = torch.load(checkpoint_path, map_location=dev)
+    state = torch.load(checkpoint_path, map_location=dev, weights_only=True)
     model.load_state_dict(state)
     model.to(dev)
     model.eval()

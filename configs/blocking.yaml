@@ -1,9 +1,9 @@
 # strategy: sbert | ann | ngram | tfidf
 strategy: sbert
 
-top_k_train: 10000
-top_k_predict: 1000
-target_total_pairs: 100000
+top_k_train: 100
+top_k_predict: 200
+target_total_pairs: 500000
 hybrid_mode: union
 seed: 42
  

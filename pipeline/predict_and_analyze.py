@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import os
+from datetime import datetime, timezone
 from pathlib import Path
+import boto3
 import pandas as pd
 
 from .config import load_dataset_config, load_training_config, to_abs
 from .modeling import load_model_for_inference, predict_from_txt
+from .record_format import build_record_text
 
 
 def run_predict(dataset: str) -> str:
@@ -16,9 +20,32 @@ def run_predict(dataset: str) -> str:
     out_dir = Path(to_abs(dcfg["output"]["predict_result_dir"]))
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    ckpt = Path(to_abs(f"models/{dataset}/best_model.pt"))
+    ckpt = Path(to_abs(dcfg["model"]["filename"]))
     if not ckpt.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt}. Run training first.")
+
+    # Build per-field text → value lookups from all source CSVs so every record
+    # text that can appear in the pairs (from raw, predict, or gold) is covered.
+    schema = dcfg["schema"]
+    text_fields = schema.get("text_fields", [])
+    name_col = text_fields[0] if text_fields else None
+    extra_cols = text_fields[1:] if len(text_fields) > 1 else []
+
+    field_lookups: dict[str, dict] = {f: {} for f in text_fields}
+    seen_paths: set = set()
+    for csv_key in ("raw_csv", "predict_csv", "gold_csv"):
+        csv_path = to_abs(dcfg["paths"].get(csv_key, ""))
+        if not csv_path or not Path(csv_path).exists():
+            continue
+        resolved = str(Path(csv_path).resolve())
+        if resolved in seen_paths:
+            continue
+        seen_paths.add(resolved)
+        df_src = pd.read_csv(csv_path, low_memory=False)
+        df_src["_text"] = df_src.apply(lambda r: build_record_text(r, text_fields), axis=1)
+        for field in text_fields:
+            if field in df_src.columns:
+                field_lookups[field].update(zip(df_src["_text"], df_src[field]))
 
     model = load_model_for_inference(str(ckpt), lm=tcfg.get("lm", "distilbert"), device=tcfg.get("device", None))
     rows = predict_from_txt(
@@ -29,14 +56,24 @@ def run_predict(dataset: str) -> str:
         batch_size=int(tcfg.get("batch_size_eval", 128)),
         threshold=float(tcfg.get("threshold", 0.5)),
     )
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows).drop(columns=["true_label"], errors="ignore")
+    out: dict = {}
+    if name_col:
+        out["name1"] = df["record1"].map(field_lookups[name_col])
+        out["name2"] = df["record2"].map(field_lookups[name_col])
+    for field in extra_cols:
+        out[f"{field}1"] = df["record1"].map(field_lookups[field])
+        out[f"{field}2"] = df["record2"].map(field_lookups[field])
+    out["score"] = df["prob_match"]
+    out["pred"] = df["pred_label"]
+    df = pd.DataFrame(out)
 
     pred_csv = out_dir / f"{dataset}_predict.csv"
     df.to_csv(pred_csv, index=False)
 
     n = len(df)
-    n_match = int((df["pred_label"] == 1).sum()) if n else 0
-    n_non = int((df["pred_label"] == 0).sum()) if n else 0
+    n_match = int((df["pred"] == 1).sum()) if n else 0
+    n_non = int((df["pred"] == 0).sum()) if n else 0
 
     analysis = out_dir / f"{dataset}_predict_analysis.txt"
     with analysis.open("w", encoding="utf-8") as f:
@@ -45,14 +82,27 @@ def run_predict(dataset: str) -> str:
         f.write(f"matches: {n_match} ({(n_match/n*100 if n else 0):.2f}%)\n")
         f.write(f"non_matches: {n_non} ({(n_non/n*100 if n else 0):.2f}%)\n")
         if n:
-            f.write(f"prob_mean: {df['prob_match'].mean():.6f}\n")
-            f.write(f"prob_std: {df['prob_match'].std():.6f}\n")
-            f.write(f"prob_q25: {df['prob_match'].quantile(0.25):.6f}\n")
-            f.write(f"prob_q50: {df['prob_match'].quantile(0.50):.6f}\n")
-            f.write(f"prob_q75: {df['prob_match'].quantile(0.75):.6f}\n")
+            f.write(f"score_mean: {df['score'].mean():.6f}\n")
+            f.write(f"score_std: {df['score'].std():.6f}\n")
+            f.write(f"score_q25: {df['score'].quantile(0.25):.6f}\n")
+            f.write(f"score_q50: {df['score'].quantile(0.50):.6f}\n")
+            f.write(f"score_q75: {df['score'].quantile(0.75):.6f}\n")
 
     print(f"[predict] Wrote {pred_csv}")
     print(f"[predict] Wrote {analysis}")
+
+    bucket = os.environ.get("S3_BUCKET")
+    if bucket:
+        s3 = boto3.client("s3")
+        prefix = dcfg.get("s3", {}).get("prefix", dataset)
+        run_ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        for local_path, s3_key in [
+            (pred_csv,  f"{prefix}/{run_ts}/{dataset}_predict.csv"),
+            (analysis,  f"{prefix}/{run_ts}/{dataset}_predict_analysis.txt"),
+        ]:
+            s3.upload_file(str(local_path), bucket, s3_key)
+            print(f"[predict] Uploaded s3://{bucket}/{s3_key}")
+
     return str(pred_csv)
 
 

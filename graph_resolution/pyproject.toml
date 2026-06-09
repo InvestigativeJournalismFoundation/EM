@@ -1,0 +1,14 @@
+[project]
+name = "graph-resolution"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.43.10",
+    "igraph>=1.0.0",
+    "leidenalg>=0.11.0",
+    "pandas>=3.0.3",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+]
