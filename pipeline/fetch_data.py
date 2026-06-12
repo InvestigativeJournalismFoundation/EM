@@ -1,7 +1,5 @@
 from pathlib import Path
 import pandas as pd
-import psycopg2 as pg
-from psycopg2 import sql
 import os
 from .config import load_dataset_config, to_abs
 
@@ -16,6 +14,8 @@ def fetch_data(dataset: str, size=None, batch_size=None) -> str:
     raw_table = supabase_cfg["raw_table"]
     standardize_table = supabase_cfg["standardize_table"]
 
+    import psycopg2 as pg
+    from psycopg2 import sql
     # Connect to Supabase using creds from .env
     print(f"[fetch_data] Connecting to {os.environ.get('PG_HOST')}...")
     conn = pg.connect(

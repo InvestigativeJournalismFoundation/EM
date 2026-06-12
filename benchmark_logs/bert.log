@@ -1,0 +1,11 @@
+We strongly recommend passing in an `attention_mask` since your input_ids may be padded. See https://huggingface.co/docs/transformers/troubleshooting#incorrect-output-when-padding-tokens-arent-masked.
+
+=== Stage: train ===
+[train] epoch=1 loss=0.0111 val_f1=0.9982 test_f1=0.9990
+[train] New best at epoch 1 — checkpoint saved
+[train] epoch=2 loss=0.0037 val_f1=0.9985 test_f1=0.9992
+[train] New best at epoch 2 — checkpoint saved
+[train] epoch=3 loss=0.0027 val_f1=0.9995 test_f1=0.9997
+[train] New best at epoch 3 — checkpoint saved
+[train] epoch=4 loss=0.0010 val_f1=0.9992 test_f1=0.9995
+[train] epoch=5 loss=0.0026 val_f1=0.9990 test_f1=0.9992

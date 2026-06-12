@@ -107,6 +107,7 @@ def train_save_and_eval(
     out_dir: str,
     hp: TrainHyperParams,
     threshold: float = 0.5,
+    resume: bool = True,
 ) -> Dict[str, float]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -124,11 +125,21 @@ def train_save_and_eval(
     opt = torch.optim.AdamW(model.parameters(), lr=hp.lr, weight_decay=hp.weight_decay)
     crit = nn.CrossEntropyLoss()
 
+    start_epoch = 1
     best = -1.0
-    best_state = None
     best_summary: Dict[str, float] = {}
 
-    for ep in range(1, hp.n_epochs + 1):
+    resume_ckpt = out / "resume_checkpoint.pt"
+    if resume and resume_ckpt.exists():
+        state = torch.load(str(resume_ckpt), map_location=dev, weights_only=False)
+        model.load_state_dict(state["model"])
+        opt.load_state_dict(state["optimizer"])
+        start_epoch = state["epoch"] + 1
+        best = state["best_val_f1"]
+        best_summary = state.get("best_summary", {})
+        print(f"[train] Resumed from epoch {state['epoch']}, best_val_f1={best:.4f}", flush=True)
+
+    for ep in range(start_epoch, hp.n_epochs + 1):
         model.train()
         losses = []
         for batch in train_loader:
@@ -143,6 +154,7 @@ def train_save_and_eval(
             logits = model(x1, x2)
             loss = crit(logits, y)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
             losses.append(float(loss.item()))
 
@@ -151,28 +163,33 @@ def train_save_and_eval(
         vm = _metrics(vy, vp, threshold)
         tm = _metrics(ty, tp, threshold)
 
-        print(f"[train] epoch={ep} loss={np.mean(losses):.4f} val_f1={vm['f1']:.4f} test_f1={tm['f1']:.4f}")
+        print(f"[train] epoch={ep} loss={np.mean(losses):.4f} val_f1={vm['f1']:.4f} test_f1={tm['f1']:.4f}", flush=True)
 
         if vm["f1"] > best:
             best = vm["f1"]
-            best_state = model.state_dict()
             best_summary = {
                 "epoch": ep,
                 "threshold": threshold,
                 **{f"val_{k}": v for k, v in vm.items()},
                 **{f"test_{k}": v for k, v in tm.items()},
             }
+            torch.save(model.state_dict(), out / "best_model.pt")
+            with (out / "train_metrics.json").open("w", encoding="utf-8") as f:
+                json.dump(best_summary, f, indent=2)
+            print(f"[train] New best at epoch {ep} — checkpoint saved", flush=True)
 
-    if best_state is None:
-        best_state = model.state_dict()
+        # Save resume state after every epoch so interrupted training can be continued
+        torch.save({
+            "model": model.state_dict(),
+            "optimizer": opt.state_dict(),
+            "epoch": ep,
+            "best_val_f1": best,
+            "best_summary": best_summary,
+        }, resume_ckpt)
 
+    resume_ckpt.unlink(missing_ok=True)
     ckpt = out / "best_model.pt"
-    torch.save(best_state, ckpt)
-
-    with (out / "train_metrics.json").open("w", encoding="utf-8") as f:
-        json.dump(best_summary, f, indent=2)
-
-    print(f"[train] Saved checkpoint: {ckpt}")
+    print(f"[train] Training complete. Best checkpoint: {ckpt}", flush=True)
     return {"checkpoint": str(ckpt), **best_summary}
 
 

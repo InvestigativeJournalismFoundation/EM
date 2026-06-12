@@ -1,0 +1,8 @@
+Sequential benchmark: ['bert', 'distilbert', 'roberta']  |  epochs=10  |  dataset=pro_supplier
+Logs → benchmark_logs/<model>.log
+
+
+============================================================
+Model: bert
+============================================================
+  [train] starting... 

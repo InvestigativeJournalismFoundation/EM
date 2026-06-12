@@ -7,10 +7,12 @@ import boto3
 import datetime
 from datetime import timezone
 
-def build_graph(dataset: str):
+def build_graph(dataset: str, model_tag: str = None):
     cfg = load_dataset_config(dataset)
-    pred_path = cfg["output"]["predict_result_dir"] + "/" + f"{dataset}_predict.csv"
-    pred_df = pd.read_csv(to_abs(pred_path))
+    tag = model_tag or dataset
+    pred_dir = to_abs(f"predict_output/{dataset}_{tag}_predict_result")
+    pred_path = f"{pred_dir}/{dataset}_{tag}_predict.csv"
+    pred_df = pd.read_csv(pred_path)
 
     # add nodes, which is every unique spelling
     all_records = pd.concat([pred_df["name1"], pred_df["name2"]]).unique()
@@ -52,7 +54,9 @@ def build_graph(dataset: str):
                 "cluster_id": cluster_id
             })
     results = pd.DataFrame(clusters)
-    out_path = cfg["output"]["cluster_result_dir"] + "/" + f"{dataset}_clusters.csv"
+    cluster_dir = to_abs(f"predict_output/{dataset}_{tag}_cluster_result")
+    os.makedirs(cluster_dir, exist_ok=True)
+    out_path = f"{cluster_dir}/{dataset}_{tag}_clusters.csv"
 
     # save locally
     results.to_csv(out_path, index=False)

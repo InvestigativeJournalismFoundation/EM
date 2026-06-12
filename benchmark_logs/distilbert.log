@@ -1,0 +1,32 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/EM/pipeline/run_pipeline.py", line 12, in <module>
+    from .fetch_data import fetch_data
+  File "/workspace/EM/pipeline/fetch_data.py", line 3, in <module>
+    import psycopg2 as pg
+ModuleNotFoundError: No module named 'psycopg2'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/EM/pipeline/run_pipeline.py", line 12, in <module>
+    from .fetch_data import fetch_data
+  File "/workspace/EM/pipeline/fetch_data.py", line 3, in <module>
+    import psycopg2 as pg
+ModuleNotFoundError: No module named 'psycopg2'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/EM/pipeline/run_pipeline.py", line 12, in <module>
+    from .fetch_data import fetch_data
+  File "/workspace/EM/pipeline/fetch_data.py", line 3, in <module>
+    import psycopg2 as pg
+ModuleNotFoundError: No module named 'psycopg2'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/EM/pipeline/run_pipeline.py", line 12, in <module>
+    from .fetch_data import fetch_data
+  File "/workspace/EM/pipeline/fetch_data.py", line 3, in <module>
+    import psycopg2 as pg
+ModuleNotFoundError: No module named 'psycopg2'

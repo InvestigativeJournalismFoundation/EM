@@ -1,0 +1,38 @@
+[
+  {
+    "model": "bert",
+    "train_time": 6.170641899108887,
+    "test_time": 5.623629331588745,
+    "predict_time": 7.242510557174683,
+    "graph_time": 7.400638103485107,
+    "train_metrics": {},
+    "test_metrics": {},
+    "predict_metrics": {},
+    "cluster_info": {},
+    "log": "/workspace/EM/benchmark_logs/bert.log"
+  },
+  {
+    "model": "distilbert",
+    "train_time": 6.340155124664307,
+    "test_time": 6.676549196243286,
+    "predict_time": 5.533792018890381,
+    "graph_time": 5.908466815948486,
+    "train_metrics": {},
+    "test_metrics": {},
+    "predict_metrics": {},
+    "cluster_info": {},
+    "log": "/workspace/EM/benchmark_logs/distilbert.log"
+  },
+  {
+    "model": "roberta",
+    "train_time": 6.3333868980407715,
+    "test_time": 6.463246822357178,
+    "predict_time": 7.377357482910156,
+    "graph_time": 6.760548830032349,
+    "train_metrics": {},
+    "test_metrics": {},
+    "predict_metrics": {},
+    "cluster_info": {},
+    "log": "/workspace/EM/benchmark_logs/roberta.log"
+  }
+]
