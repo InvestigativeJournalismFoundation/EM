@@ -1,8 +1,8 @@
-lm: distilbert
+lm: roberta
 max_len: 256
 batch_size_train: 32
 batch_size_eval: 128
-n_epochs: 10
+n_epochs: 2
 lr: 2.0e-5
 weight_decay: 0.0
 seed: 42

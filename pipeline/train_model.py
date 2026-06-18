@@ -10,7 +10,7 @@ from .config import load_dataset_config, load_training_config, to_abs
 from .modeling import TrainHyperParams, train_save_and_eval
 
 
-def train(dataset: str) -> str:
+def train(dataset: str, model: str | None = None, model_path: str | None = None) -> str:
     dcfg = load_dataset_config(dataset)
     tcfg = load_training_config()
 
@@ -19,7 +19,7 @@ def train(dataset: str) -> str:
     test_path = to_abs(dcfg["output"]["test_txt"])
 
     hp = TrainHyperParams(
-        lm=tcfg.get("lm", "distilbert"),
+        lm=model if model is not None else tcfg.get("lm", "distilbert"),
         max_len=int(tcfg.get("max_len", 256)),
         batch_size_train=int(tcfg.get("batch_size_train", 32)),
         batch_size_eval=int(tcfg.get("batch_size_eval", 128)),
@@ -44,7 +44,8 @@ def train(dataset: str) -> str:
     bucket = os.environ.get("S3_BUCKET")
     if bucket:
         prefix = dcfg.get("s3", {}).get("prefix", dataset)
-        s3_key = f"{prefix}/models/{dataset}/best_model.pt"
+        resolved_model_path = model_path or dcfg.get("s3", {}).get("model_path", f"models/{dataset}/best_model.pt")
+        s3_key = f"{prefix}/{resolved_model_path}"
         boto3.client("s3").upload_file(str(ckpt), bucket, s3_key)
         print(f"[train] Uploaded model to s3://{bucket}/{s3_key}")
 

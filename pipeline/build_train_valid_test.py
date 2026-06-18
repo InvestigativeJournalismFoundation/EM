@@ -66,7 +66,11 @@ def _ngram_pairs(texts: List[str], top_k: int, target_total_pairs: int | None, n
     return pairs
 
 
-def build_splits(dataset: str) -> tuple[str, str, str]:
+def build_splits(
+    dataset: str,
+    top_k_train: int | None = None,
+    target_total_pairs: int | None = None,
+) -> tuple[str, str, str]:
     dcfg = load_dataset_config(dataset)
     bcfg = load_blocking_config()
 
@@ -79,12 +83,15 @@ def build_splits(dataset: str) -> tuple[str, str, str]:
     tmp_dir = out_train.parent / f"._tmp_{dataset}_splits"
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
+    _top_k_train = top_k_train if top_k_train is not None else int(bcfg.get("top_k_train", 10000))
+    _target_total_pairs = target_total_pairs if target_total_pairs is not None else bcfg.get("target_total_pairs", 200000)
+
     if strategy == "sbert":
         scfg = bcfg.get("sbert", {})
         cfg = SbertBlockingConfig(
             model_name=scfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"),
-            top_k=int(bcfg.get("top_k_train", 10000)),
-            target_total_pairs=bcfg.get("target_total_pairs", 200000),
+            top_k=_top_k_train,
+            target_total_pairs=_target_total_pairs,
             batch_size_encode=int(scfg.get("batch_size_encode", 512)),
             block_rows=int(scfg.get("block_rows", 800)),
             anchor_batch_size=int(scfg.get("anchor_batch_size", 64)),
@@ -98,8 +105,8 @@ def build_splits(dataset: str) -> tuple[str, str, str]:
         scfg = bcfg.get("sbert", {})
         cfg = AnnBlockingConfig(
             model_name=scfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"),
-            top_k=int(bcfg.get("top_k_train", 10000)),
-            target_total_pairs=bcfg.get("target_total_pairs", 200000),
+            top_k=_top_k_train,
+            target_total_pairs=_target_total_pairs,
             batch_size_encode=int(scfg.get("batch_size_encode", 512)),
             nlist=int(acfg.get("nlist", 4096)),
             nprobe=int(acfg.get("nprobe", 16)),
@@ -109,15 +116,13 @@ def build_splits(dataset: str) -> tuple[str, str, str]:
 
     elif strategy == "ngram":
         ncfg = bcfg.get("ngram", {})
-        top_k = int(bcfg.get("top_k_train", 10000))
-        target_total_pairs = bcfg.get("target_total_pairs", 200000)
         seed = int(bcfg.get("seed", 42))
         ngram_n = int(ncfg.get("n", 3))
 
         df = pd.read_csv(gold_csv)
         texts = df["record_text"].astype(str).tolist()
         canon = df[dcfg["schema"]["canonical_col"]].tolist()
-        pairs = _ngram_pairs(texts, top_k, target_total_pairs, ngram_n, seed)
+        pairs = _ngram_pairs(texts, _top_k_train, _target_total_pairs, ngram_n, seed)
         labeled = [(i, j, int(canon[i] == canon[j])) for i, j in pairs]
 
         tr, va, te = train_valid_test_split_indices(
@@ -135,8 +140,8 @@ def build_splits(dataset: str) -> tuple[str, str, str]:
             min_df=int(tfcfg.get("min_df", 2)),
             max_df=float(tfcfg.get("max_df", 0.95)),
             sublinear_tf=bool(tfcfg.get("sublinear_tf", True)),
-            top_k=int(bcfg.get("top_k_train", 500)),
-            target_total_pairs=bcfg.get("target_total_pairs", None),
+            top_k=_top_k_train,
+            target_total_pairs=_target_total_pairs,
             seed=int(bcfg.get("seed", 42)),
             anchor_batch_size=int(tfcfg.get("anchor_batch_size", 32)),
             block_rows=int(tfcfg.get("block_rows", 32)),

@@ -12,9 +12,10 @@ from .modeling import load_model_for_inference, predict_from_txt
 from .record_format import build_record_text
 
 
-def run_predict(dataset: str) -> str:
+def run_predict(dataset: str, model: str | None = None) -> str:
     dcfg = load_dataset_config(dataset)
     tcfg = load_training_config()
+    lm = model if model is not None else lm
 
     predict_txt = to_abs(dcfg["output"]["predict_txt"])
     out_dir = Path(to_abs(dcfg["output"]["predict_result_dir"]))
@@ -47,11 +48,11 @@ def run_predict(dataset: str) -> str:
             if field in df_src.columns:
                 field_lookups[field].update(zip(df_src["_text"], df_src[field]))
 
-    model = load_model_for_inference(str(ckpt), lm=tcfg.get("lm", "distilbert"), device=tcfg.get("device", None))
+    model = load_model_for_inference(str(ckpt), lm=lm, device=tcfg.get("device", None))
     rows = predict_from_txt(
         model,
         predict_txt,
-        lm=tcfg.get("lm", "distilbert"),
+        lm=lm,
         max_len=int(tcfg.get("max_len", 256)),
         batch_size=int(tcfg.get("batch_size_eval", 128)),
         threshold=float(tcfg.get("threshold", 0.5)),
